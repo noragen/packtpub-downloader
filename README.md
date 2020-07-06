@@ -27,4 +27,7 @@ Since PacktPub restructured their website [packtpub-library-downloader](https://
 - *epub*: EPUB format
 - *code*: Accompanying source code, saved as .zip files
 
-I'm working on Python 3.6.0 
+**Video File Types**
+- *video*: probably mp4 format
+
+I'm working on Python 3.7.7
