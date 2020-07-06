@@ -28,6 +28,6 @@ Since PacktPub restructured their website [packtpub-library-downloader](https://
 - *code*: Accompanying source code, saved as .zip files
 
 **Video File Types**
-- *video*: probably mp4 format
+- *video*: probably mp4 format, saved as .zip files
 
 I'm working on Python 3.7.7
