@@ -100,7 +100,7 @@ def get_book_file_types(user, book_id):
 
 
 # TODO: i'd like that this functions be async and download faster
-def download_book(filename, url):
+def download_book(user, filename, url):
     '''
         Download your book
     '''
