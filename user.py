@@ -30,6 +30,7 @@ class User:
         url = BASE_URL+AUTH_ENDPOINT
         # use json paramenter because for any reason they send user and pass in plain text :'(  
         r = requests.post(url, json={'username':self.username, 'password':self.password})
+        print (url)
         if r.status_code == 200:
             print("You are in!")
             return 'Bearer ' + r.json()['data']['access']

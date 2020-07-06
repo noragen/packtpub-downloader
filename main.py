@@ -81,6 +81,7 @@ def get_book_file_types(user, book_id):
     r = requests.get(url, headers=user.get_header())
 
     if  (r.status_code == 200): # success
+        print (r.json()['data'][0].get('fileTypes', []))	
         return r.json()['data'][0].get('fileTypes', [])
     
     elif (r.status_code == 401): # jwt expired 
@@ -114,10 +115,12 @@ def download_book(filename, url):
                     f.flush()
             print('Finished ' + filename)
 
+def getTargetFilename(fn):
+    return fn.replace(fn, fn.rpartition('.')[0] + f" [{fn.rpartition('.')[-1]}]." + 'zip')
 
 def make_zip(filename):
-    if filename[-4:] == 'code':
-        os.replace(filename, filename[:-4] + 'zip')
+    if filename.rpartition('.')[-1] in ['code', 'video']:
+        os.replace(filename, getTargetFilename(filename))
 
 
 def move_current_files(root, book):
@@ -206,15 +209,19 @@ def main(argv):
         file_types = get_book_file_types(user, book['productId'])
         for file_type in file_types:
             if file_type in book_file_types:  # check if the file type entered is available by the current book
-                book_name = book['productName'].replace(' ', '_').replace('.', '_').replace(':', '_').replace('/','')
+                book_name = book['productName'].replace(':', '_').replace('/','') #.replace(' ', '_').replace('.', '_')
                 if separate:
                     filename = f'{root_directory}/{book_name}/{book_name}.{file_type}'
                     move_current_files(root_directory, book_name)
                 else:
                     filename = f'{root_directory}/{book_name}.{file_type}'
+                filename_target = filename
+                if filename.rpartition(".")[-1] in ['code', 'video']:
+                    filename_target = getTargetFilename(filename)
+					
                 # get url of the book to download
                 url = get_url_book(user, book['productId'], file_type)
-                if not os.path.exists(filename) and not os.path.exists(filename.replace('.code', '.zip')):
+                if not os.path.exists(filename_target):
                     download_book(filename, url)
                     make_zip(filename)
                 else:
