@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 import os
+import signal
 import sys
 import glob
 import math
@@ -12,13 +13,17 @@ from tqdm import tqdm, trange
 from config import BASE_URL, PRODUCTS_ENDPOINT, URL_BOOK_TYPES_ENDPOINT, URL_BOOK_ENDPOINT
 from user import User
 
+def signal_handler(sig, frame):
+    print('User defined exit!')
+    sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
 
 #TODO: I should do a function that his only purpose is to request and return data
 def book_request(user, offset=0, limit=10, verbose=False):
     data = []
     url = BASE_URL + PRODUCTS_ENDPOINT.format(offset=offset, limit=limit)
-    if verbose:
-        print(url)
+    #if verbose:
+    #    print(url)
     r = requests.get(url, headers=user.get_header())
     data += r.json().get('data', [])
 
@@ -81,7 +86,7 @@ def get_book_file_types(user, book_id):
     r = requests.get(url, headers=user.get_header())
 
     if  (r.status_code == 200): # success
-        print (r.json()['data'][0].get('fileTypes', []))	
+        print (r.json()['data'][0].get('fileTypes', []))
         return r.json()['data'][0].get('fileTypes', [])
     
     elif (r.status_code == 401): # jwt expired 
@@ -103,6 +108,9 @@ def download_book(filename, url):
 
     with open(filename, 'wb') as f:
         r = requests.get(url, stream=True)
+        if (r.status_code == 401): # jwt expired 
+            user.refresh_header() # refresh token 
+            r = requests.get(url, stream=True)
         total = r.headers.get('content-length')
         if total is None:
             f.write(response.content)
@@ -218,11 +226,10 @@ def main(argv):
                 filename_target = filename
                 if filename.rpartition(".")[-1] in ['code', 'video']:
                     filename_target = getTargetFilename(filename)
-					
                 # get url of the book to download
                 url = get_url_book(user, book['productId'], file_type)
                 if not os.path.exists(filename_target):
-                    download_book(filename, url)
+                    download_book(user, filename, url)
                     make_zip(filename)
                 else:
                     if verbose:
