@@ -9,6 +9,7 @@ import glob
 import math
 import getopt
 import requests
+import json
 from tqdm import tqdm, trange
 from config import BASE_URL, PRODUCTS_ENDPOINT, URL_BOOK_TYPES_ENDPOINT, URL_BOOK_ENDPOINT
 from user import User
@@ -69,7 +70,7 @@ def get_url_book(user, book_id, format='pdf'):
 
     elif r.status_code == 401: # jwt expired 
         user.refresh_header() # refresh token 
-        get_url_book(user, book_id, format)  # call recursive 
+        return get_url_book(user, book_id, format)  # call recursive 
     
     print('ERROR (please copy and paste in the issue)')
     print(r.json())
@@ -106,22 +107,27 @@ def download_book(user, filename, url):
     '''
     print('Starting to download ' + filename)
 
-    with open(filename, 'wb') as f:
-        r = requests.get(url, stream=True)
-        if (r.status_code == 401): # jwt expired 
-            user.refresh_header() # refresh token 
+    try:
+        with open(filename, 'wb') as f:
             r = requests.get(url, stream=True)
-        total = r.headers.get('content-length')
-        if total is None:
-            f.write(response.content)
-        else:
-            total = int(total)
-            # TODO: read more about tqdm
-            for chunk in tqdm(r.iter_content(chunk_size=1024), total=math.ceil(total//1024), unit='KB', unit_scale=True):
-                if chunk:  # filter out keep-alive new chunks
-                    f.write(chunk)
-                    f.flush()
-            print('Finished ' + filename)
+            if (r.status_code == 401): # jwt expired 
+                user.refresh_header() # refresh token 
+                r = requests.get(url, stream=True)
+            total = r.headers.get('content-length')
+            if total is None:
+                f.write(response.content)
+            else:
+                total = int(total)
+                # TODO: read more about tqdm
+                for chunk in tqdm(r.iter_content(chunk_size=1024), total=math.ceil(total//1024), unit='KB', unit_scale=True):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+                        f.flush()
+                print('Finished ' + filename)
+    except KeyboardInterrupt as ki: #try again
+        sys.exit(0)
+    except Exception as e:
+        download_book(user, filename, url)
 
 def getTargetFilename(fn):
     return fn.replace(fn, fn.rpartition('.')[0] + f" [{fn.rpartition('.')[-1]}]." + 'zip')
@@ -206,12 +212,19 @@ def main(argv):
     user = User(email, password)
 
     # get all your books
-    books = get_books(user, is_verbose=verbose, is_quiet=quiet)
+    if not os.path.exists("books.cache"):
+        books = get_books(user, is_verbose=verbose, is_quiet=quiet)
+        with open("books.cache", "w", encoding="utf-8") as f:
+            json.dump(books, f)
+    else:
+        with open("books.cache", encoding="utf-8") as f:
+            books=json.load(f)
     print('Downloading books...')
     if not quiet:
         books_iter = tqdm(books, unit='Book')
     else:
         books_iter = books
+        
     for book in books_iter:
         # get the different file type of current book
         file_types = get_book_file_types(user, book['productId'])
@@ -234,7 +247,7 @@ def main(argv):
                 else:
                     if verbose:
                         tqdm.write(f'{filename} already exists, skipping.')
-
+    print("==ALL DOWNLOADS COMPLETED==")
 
 if __name__ == '__main__':
     main(sys.argv[1:])
